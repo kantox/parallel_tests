@@ -37,12 +37,18 @@ module ParallelTests
       @graceful_shutdown_attempted = true
     end
 
+    def print_summary(item, index, result)
+      $stdout.puts("For #{index}  #{item} -> #{result}")
+    end
+
     def execute_in_parallel(items, num_processes, options)
       Tempfile.open 'parallel_tests-lock' do |lock|
         ParallelTests.with_pid_file do
           progress_indicator = simulate_output_for_ci if options[:serialize_stdout]
 
-          Parallel.map(items, :in_threads => num_processes) do |item|
+          parallel_options = { in_threads: num_processes }
+          parallel_options[:finish] = method(:report_finished_group) if options[:finish_summary]
+          Parallel.map(items, parallel_options) do |item|
             result = yield(item)
             if progress_indicator && progress_indicator.alive?
               progress_indicator.exit
@@ -146,6 +152,10 @@ module ParallelTests
       puts "#{num_processes} processes for #{num_tests} #{name}s, ~ #{tests_per_process} #{name}s per process"
     end
 
+    def report_finished_group(group, index, result)
+      $stdout.puts("For group<#{index}> #{group} result: #{result}")
+    end
+
     #exit with correct status code so rake parallel:test && echo 123 works
     def any_test_failed?(test_results)
       test_results.any? { |result| result[:exit_status] != 0 }
@@ -223,6 +233,7 @@ module ParallelTests
         opts.on("--first-is-1", "Use \"1\" as TEST_ENV_NUMBER to not reuse the default test environment") { options[:first_is_1] = true }
         opts.on("--verbose", "Print more output (mutually exclusive with quiet)") { options[:verbose] = true }
         opts.on("--quiet", "Print tests output only (mutually exclusive with verbose)") { options[:quiet] = true }
+        opts.on("--finish-summary", "Print summary of worker test group") { options[:finish_summary] = true }
         opts.on("-v", "--version", "Show Version") { puts ParallelTests::VERSION; exit }
         opts.on("-h", "--help", "Show this.") { puts opts; exit }
       end.parse!(argv)

@@ -66,6 +66,10 @@ describe ParallelTests::CLI do
       )
     end
 
+    it "parses --finish-summary" do
+      expect(call(["test", "--finish-summary"])).to eq(defaults.merge(finish_summary: true))
+    end
+
     it "parses --quiet" do
       expect(call(["test", "--quiet"])).to eq(defaults.merge(:quiet => true))
     end
@@ -259,6 +263,18 @@ describe ParallelTests::CLI do
     end
   end
 
+  describe "#report_finished_group" do
+    let(:group_result) do
+      {exit_status: 1, command: 'foo', seed: nil, output: 'blah'}
+    end
+
+    it 'returns a plain fail message if colors are nor supported' do
+      expect { subject.send(:report_finished_group, group_result, 42, :ok) }.to output(
+        "For group<42> #{group_result} result: ok\n"
+      ).to_stdout
+    end
+  end
+
   describe "#final_fail_message" do
     before do
       subject.instance_variable_set(:@runner, ParallelTests::Test::Runner)
@@ -281,8 +297,11 @@ describe ParallelTests::CLI do
       let(:common_options) {
         { files: ["test"], group_by: :filesize, first_is_1: false }
       }
+      let(:finish_summary_option) { false }
+
       before do
         allow(subject).to receive(:puts)
+        expect(subject).to receive(:report_finished_group).never unless finish_summary_option
         expect(subject).to receive(:load_runner).with("my_test_runner").and_return(ParallelTests::MyTestRunner::Runner)
         allow(ParallelTests::MyTestRunner::Runner).to receive(:test_file_name).and_return("test")
         expect(ParallelTests::MyTestRunner::Runner).to receive(:tests_in_groups).and_return([
@@ -322,6 +341,15 @@ describe ParallelTests::CLI do
         expect(subject).to receive(:run_tests).once.with(['ccc', 'ddd'], 0, 1, options).and_return(results)
         expect(subject).to receive(:run_tests).once.with(['eee', 'fff'], 1, 1, options).and_return(results)
         subject.run(['test', '-n', '3', '--only-group', '2,3', '-t', 'my_test_runner'])
+      end
+
+      context 'with --finish-summary option' do
+        let(:finish_summary_option) { true }
+        it "calls run_tests with :finish option" do
+          expect(subject).to receive(:run_tests).twice.and_return(results)
+          expect(subject).to receive(:report_finished_group).twice
+          subject.run(['test', '-n', '3', '--only-group', '1,2', '--finish-summary', '-t', 'my_test_runner'])
+        end
       end
     end
   end

@@ -38,11 +38,17 @@ module ParallelTests
       @graceful_shutdown_attempted = true
     end
 
+    def print_summary(item, index, result)
+      $stdout.puts("For #{index}  #{item} -> #{result}")
+    end
+
     def execute_in_parallel(items, num_processes, options)
       Tempfile.open 'parallel_tests-lock' do |lock|
         ParallelTests.with_pid_file do
           simulate_output_for_ci options[:serialize_stdout] do
-            Parallel.map(items, :in_threads => num_processes) do |item|
+            parallel_options = { in_threads: num_processes }
+            parallel_options[:finish] = method(:report_finished_group) if options[:finish_summary]
+            Parallel.map(items, parallel_options) do |item|
               result = yield(item)
               reprint_output(result, lock.path) if options[:serialize_stdout]
               result
@@ -144,6 +150,10 @@ module ParallelTests
       puts "#{num_processes} processes for #{num_tests} #{name}s, ~ #{tests_per_process} #{name}s per process"
     end
 
+    def report_finished_group(group, index, result)
+      $stdout.puts("For group<#{index}> #{group} result: #{result}")
+    end
+
     #exit with correct status code so rake parallel:test && echo 123 works
     def any_test_failed?(test_results)
       test_results.any? { |result| result[:exit_status] != 0 }
@@ -224,6 +234,7 @@ module ParallelTests
         opts.on("--verbose-process-command", "Displays only the command that will be executed by each process") { options[:verbose_process_command] = true }
         opts.on("--verbose-rerun-command", "When there are failures, displays the command executed by each process that failed") { options[:verbose_rerun_command] = true }
         opts.on("--quiet", "Print only tests output") { options[:quiet] = true }
+        opts.on("--finish-summary", "Print summary of worker test group") { options[:finish_summary] = true }
         opts.on("-v", "--version", "Show Version") { puts ParallelTests::VERSION; exit }
         opts.on("-h", "--help", "Show this.") { puts opts; exit }
       end.parse!(argv)

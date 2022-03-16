@@ -149,6 +149,11 @@ describe ParallelTests::CLI do
         end
       end
     end
+
+    it "parses --clone-env" do
+      expect(call(["test", "--clone-env"])).
+        to eq(defaults.merge(:clone_env => true))
+    end
   end
 
   describe "#load_runner" do

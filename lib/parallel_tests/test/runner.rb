@@ -70,7 +70,10 @@ module ParallelTests
         end
 
         def execute_command(cmd, process_number, num_processes, options)
-          env = (options[:env] || {}).merge(
+          env = options[:env]
+          env ||= ENV.to_h if options[:clone_env]
+          env ||= {}
+          env = env.merge(
             "TEST_ENV_NUMBER" => test_env_number(process_number, options).to_s,
             "PARALLEL_TEST_GROUPS" => num_processes.to_s,
             "PARALLEL_PID_FILE" => ParallelTests.pid_file_path,

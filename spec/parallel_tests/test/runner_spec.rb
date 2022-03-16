@@ -501,6 +501,41 @@ EOF
       end
     end
 
+    it "allows using the :env option" do
+      expect(ENV).to receive(:to_h).never
+      run_with_file("puts ENV['FOO_BAR']") do |path|
+        result = call("ruby #{path}", 1, 4, env: { "FOO_BAR" => "OVERRIDE"})
+        expect(result).to include({
+          :stdout => "OVERRIDE\n",
+          :exit_status => 0
+        })
+      end
+    end
+
+    it "allows using the parent process env with :clone_env" do
+      expect(ENV).to receive(:to_h).and_return(
+        "FOO_BAR" => "ORIGINAL_VALUE"
+      )
+      run_with_file("puts ENV['FOO_BAR']") do |path|
+        result = call("ruby #{path}", 1, 4, clone_env: true, env: nil)
+        expect(result).to include({
+          :stdout => "ORIGINAL_VALUE\n",
+          :exit_status => 0
+        })
+      end
+    end
+
+    it "priorize :env option over :clone_env" do
+      expect(ENV).to receive(:to_h).never
+      run_with_file("puts ENV['FOO_BAR']") do |path|
+        result = call("ruby #{path}", 1, 4, clone_env: true, env: {})
+        expect(result).to include({
+          :stdout => "\n",
+          :exit_status => 0
+        })
+      end
+    end
+
     describe "rspec seed" do
       it "includes seed when provided" do
         run_with_file("puts 'Run options: --seed 555'") do |path|

@@ -235,6 +235,7 @@ module ParallelTests
         opts.on("--verbose-rerun-command", "When there are failures, displays the command executed by each process that failed") { options[:verbose_rerun_command] = true }
         opts.on("--quiet", "Print only tests output") { options[:quiet] = true }
         opts.on("--finish-summary", "Print summary of worker test group") { options[:finish_summary] = true }
+        opts.on("--clone-env", "Clone original parent process ENV when invoking the child processes") { options[:clone_env] = true }
         opts.on("-v", "--version", "Show Version") { puts ParallelTests::VERSION; exit }
         opts.on("-h", "--help", "Show this.") { puts opts; exit }
       end.parse!(argv)

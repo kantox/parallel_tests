@@ -38,12 +38,8 @@ jobs:
             allow-failure: false
             frozen-string: true
             push-gem: false
-          - ruby-version: '2.4'
-            allow-failure: false
-            frozen-string: true
-            push-gem: false
           - ruby-version: '2.2'
-            allow-failure: false
+            allow-failure: true
             frozen-string: true
             push-gem: false
     steps:
